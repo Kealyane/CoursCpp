@@ -3,8 +3,6 @@
 
 #include "Floor.h"
 
-#include "PointGenerator.h"
-
 // Sets default values
 AFloor::AFloor()
 {
@@ -16,17 +14,6 @@ AFloor::AFloor()
 void AFloor::BeginPlay()
 {
 	Super::BeginPlay();
-	DebugPoints();
+
 }
 
-void AFloor::DebugPoints()
-{
-	TArray<FVector2d> Points = PointGenerator::GeneratePoints(50, -100, 100);
-	if (const UWorld* World = GetWorld())
-	{
-		for (const FVector2d& Point : Points)
-		{
-			DrawDebugSphere(World, FVector(Point, 10), 5.f, 10.f, FColor::Magenta, true);
-		}
-	}
-}

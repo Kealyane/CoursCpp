@@ -4,21 +4,28 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Floor.generated.h"
+#include "LevelGenerator.generated.h"
 
-class PointGenerator;
+struct FGraphPath;
 
 UCLASS()
-class COURSCPP_API AFloor : public AActor
+class COURSCPP_API ALevelGenerator : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
-	AFloor();
+	ALevelGenerator();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+private:
+	TArray<FVector2d> Points;
+	
+	FGraphPath GenerateTriangles();
+	void DebugPoints(TArray<FVector2d> pPoints);
+	void DebugGraph(FGraphPath pGraph);
 
 };
