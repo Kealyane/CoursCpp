@@ -20,6 +20,8 @@ void ALevelGenerator::BeginPlay()
 	FGraphPath MyGraph = GenerateTriangles();
 	DebugPoints(Points);
 	DebugGraph(MyGraph);
+	FGraphPath MSTGraph = CreateGraphFromMST(MyGraph);
+	DebugMSTGraph(MSTGraph); 
 }
 
 FGraphPath ALevelGenerator::GenerateTriangles()
@@ -28,10 +30,9 @@ FGraphPath ALevelGenerator::GenerateTriangles()
 	
 	Points = PointGenerator::GeneratePoints(50, -100, 100);
 	bool bSuccess;
-	int32 counter = 0;
+
 	do
 	{
-		UE_LOG(LogTemp, Warning, TEXT("generate delaunay : %d"), counter);
 		bSuccess = DelaunayTriangulation.Triangulate(Points);
 		
 	} while (!bSuccess && !DelaunayTriangulation.IsDelaunay(Points));
@@ -62,13 +63,90 @@ FGraphPath ALevelGenerator::GenerateTriangles()
 	return lGraph;
 }
 
+TArray<FPriorityEdge> ALevelGenerator::GenerateMST(FGraphPath pGraph)
+{
+	TSet<int32> VisitedNodes;
+	TArray<FPriorityEdge> StoreMSTEdges;
+	
+	TArray<FPriorityEdge> EdgesPriorityQueue;
+
+	const int32 StartNode = pGraph.Nodes[0].Node;
+	VisitedNodes.Add(StartNode);
+
+	// sort all edges of start node by min weight
+	const FNode StartGraphNode = pGraph.GetNode(StartNode);
+	for (const FGraphEdge& Edge : StartGraphNode.Edges)
+	{
+		EdgesPriorityQueue.HeapPush(FPriorityEdge(StartNode, Edge.TargetNode, Edge.Weight));
+	}
+	
+	while (VisitedNodes.Num() < pGraph.Nodes.Num())
+	{
+		FPriorityEdge CurrentEdge;
+		
+		// found a node that hasn't been visited
+		while (EdgesPriorityQueue.Num() > 0)
+		{
+			EdgesPriorityQueue.HeapPop(CurrentEdge);
+			if (!VisitedNodes.Contains(CurrentEdge.EndNode)) break; 
+		}
+		VisitedNodes.Add(CurrentEdge.EndNode);
+		StoreMSTEdges.Add(CurrentEdge);
+
+		// next node
+		const FNode CurrentGraphNode = pGraph.GetNode(CurrentEdge.EndNode);
+		for (const FGraphEdge& Edge : CurrentGraphNode.Edges)
+		{
+			if (!VisitedNodes.Contains(Edge.TargetNode))
+			{
+				EdgesPriorityQueue.HeapPush(FPriorityEdge(CurrentEdge.EndNode, Edge.TargetNode, Edge.Weight));
+			}
+		}
+	}
+	return StoreMSTEdges;
+}
+
+FGraphPath ALevelGenerator::CreateGraphFromMST(FGraphPath pGraph)
+{
+	TArray<FPriorityEdge> StoredMSTEdges = GenerateMST(pGraph);
+	FGraphPath MSTPath = FGraphPath();
+
+	for (const FPriorityEdge Edge : StoredMSTEdges)
+	{
+		const FVector2d StartNodePos = pGraph.GetNode(Edge.StartNode).Position;
+		const FVector2d EndNodePos = pGraph.GetNode(Edge.EndNode).Position;
+
+		// Process StartNode
+		if (!MSTPath.IsNodeInGraph(Edge.StartNode))
+		{
+			MSTPath.AddNode(Edge.StartNode, StartNodePos, Edge.EndNode, EndNodePos, Edge.Weight);
+		}
+		else
+		{
+			MSTPath.GetNode(Edge.StartNode).AddEdge(Edge.EndNode, EndNodePos, Edge.Weight);
+		}
+
+		// Process EndNode
+		if (!MSTPath.IsNodeInGraph(Edge.EndNode))
+		{
+			MSTPath.AddNode(Edge.EndNode, EndNodePos, Edge.StartNode, StartNodePos, Edge.Weight);
+		}
+		else
+		{
+			MSTPath.GetNode(Edge.EndNode).AddEdge(Edge.StartNode, StartNodePos, Edge.Weight);
+		}
+	}
+	
+	return MSTPath;
+}
+
 void ALevelGenerator::DebugPoints(TArray<FVector2d> pPoints)
 {
 	if (const UWorld* World = GetWorld())
 	{
 		for (const FVector2d& Point : pPoints)
 		{
-			DrawDebugSphere(World, FVector(Point, 10), 5.f, 10.f, FColor::Magenta, true);
+			DrawDebugSphere(World, FVector(Point, 10), 2.f, 10.f, FColor::Magenta, true);
 		}
 	}
 }
@@ -78,13 +156,31 @@ void ALevelGenerator::DebugGraph(FGraphPath pGraph)
 	const UWorld* World = GetWorld();
 	if (World == nullptr) return;
 	
-	for(FNode& Node : pGraph.Nodes)
+	for(TTuple<int32,FNode>& Elt : pGraph.Nodes)
 	{
-		DrawDebugSphere(World, FVector(Node.Position, 20), 2.f, 10.f, FColor::Cyan, true);
+		FNode Node = Elt.Value;
+		DrawDebugSphere(World, FVector(Node.Position, 10), 2.f, 10.f, FColor::Cyan, true);
 		
 		for (FGraphEdge& Edge : Node.Edges)
 		{
-			DrawDebugLine(World, FVector(Node.Position,20), FVector(Edge.TargetNodePos,20), FColor::Blue, true);
+			DrawDebugLine(World, FVector(Node.Position,10), FVector(Edge.TargetNodePos,10), FColor::Blue, true);
+		}
+	}
+}
+
+void ALevelGenerator::DebugMSTGraph(FGraphPath pGraph)
+{
+	const UWorld* World = GetWorld();
+	if (World == nullptr) return;
+	
+	for(TTuple<int32,FNode>& Elt : pGraph.Nodes)
+	{
+		FNode Node = Elt.Value;
+		DrawDebugSphere(World, FVector(Node.Position, 10), 2.f, 10.f, FColor::Yellow, true);
+		
+		for (FGraphEdge& Edge : Node.Edges)
+		{
+			DrawDebugLine(World, FVector(Node.Position,10), FVector(Edge.TargetNodePos,10), FColor::Orange, true);
 		}
 	}
 }

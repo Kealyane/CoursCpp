@@ -53,7 +53,7 @@ struct FGraphPath
 {
 	GENERATED_BODY();
 	
-	TArray<FNode> Nodes;
+	TMap<int32, FNode> Nodes;
 
 	FGraphPath()
 	{
@@ -61,40 +61,64 @@ struct FGraphPath
 
 	bool IsNodeInGraph(int32 pNode)
 	{
-		for (const FNode lNode : Nodes)
-		{
-			if (lNode.Node == pNode) return true;
-		}
-		return false;
+		return Nodes.Contains(pNode);
 	}
-
-	// bool IsEdgeInGraph(int32 pNode1, int32 pNode2)
-	// {
-	// 	if (!IsNodeInGraph(pNode1)) return false;
-	// 	if (!IsNodeInGraph(pNode2)) return false;
-	// 	return true;
-	// }
-	
 	FNode GetNode(int32 pNode)
 	{
-		FNode resultNode;
-		for (const FNode lNode : Nodes)
+		return Nodes[pNode];
+	}
+	void AddNode(int32 currentNode, FVector2d posNode,
+	 			int32 Node1, FVector2d posNode1, int32 Weight1,
+	 			int32 Node2, FVector2d posNode2, int32 Weight2)
+	{
+		if (Nodes.Contains(currentNode))
 		{
-			if (lNode.Node == pNode)
-			{
-				return lNode;
-			}
+			Nodes[currentNode].AddEdge(Node1, posNode1, Weight1);
+			Nodes[currentNode].AddEdge(Node2, posNode2, Weight2);
 		}
-		return resultNode;
+		else
+		{
+			FNode node = FNode(currentNode, posNode);
+			node.AddEdge(Node1, posNode1, Weight1);
+			node.AddEdge(Node2, posNode2, Weight2);
+			Nodes.Add(currentNode,node);
+		}
+	}
+	void AddNode(int32 StartNode, FVector2d PosStart, int32 EndNode, FVector2d PosEnd, float Weight)
+	{
+		if (Nodes.Contains(StartNode))
+		{
+			Nodes[StartNode].AddEdge(EndNode, PosEnd, Weight);
+		}
+		else
+		{
+			FNode node = FNode(StartNode, PosStart);
+			node.AddEdge(EndNode, PosEnd, Weight);
+			Nodes.Add(StartNode, node);			
+		}
+	}
+};
+
+USTRUCT()
+struct FPriorityEdge
+{
+	GENERATED_BODY()
+
+	int32 StartNode;
+	int32 EndNode;
+	float Weight;
+
+	FPriorityEdge()
+		: StartNode(0), EndNode(0), Weight(0.f)
+	{
+	}
+	FPriorityEdge(int32 pStartNode, int32 pEndNode, float pWeight)
+		: StartNode(pStartNode), EndNode(pEndNode), Weight(pWeight)
+	{
 	}
 
-	void AddNode(int32 currentNode, FVector2d posNode,
-				int32 Node1, FVector2d posNode1, int32 Weight1,
-				int32 Node2, FVector2d posNode2, int32 Weight2)
+	bool operator < (const FPriorityEdge& Other) const
 	{
-		FNode node = FNode(currentNode, posNode);
-		node.AddEdge(Node1, posNode1, Weight1);
-		node.AddEdge(Node2, posNode2, Weight2);
-		Nodes.Add(node);
+		return Weight < Other.Weight;
 	}
 };

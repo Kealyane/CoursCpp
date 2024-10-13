@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "LevelGenerator.generated.h"
 
+struct FPriorityEdge;
 struct FGraphPath;
 
 UCLASS()
@@ -23,9 +24,13 @@ protected:
 
 private:
 	TArray<FVector2d> Points;
-	
+
 	FGraphPath GenerateTriangles();
+	TArray<FPriorityEdge> GenerateMST(FGraphPath pGraph);
+	FGraphPath CreateGraphFromMST(FGraphPath pGraph);
+	
 	void DebugPoints(TArray<FVector2d> pPoints);
 	void DebugGraph(FGraphPath pGraph);
+	void DebugMSTGraph(FGraphPath pGraph);
 
 };
