@@ -18,7 +18,7 @@ void ALevelGenerator::BeginPlay()
 {
 	Super::BeginPlay();
 	FGraphPath MyGraph = GenerateTriangles();
-	//DebugPoints(Points);
+	DebugPoints(Points);
 	DebugGraph(MyGraph);
 }
 
@@ -28,8 +28,10 @@ FGraphPath ALevelGenerator::GenerateTriangles()
 	
 	Points = PointGenerator::GeneratePoints(50, -100, 100);
 	bool bSuccess;
+	int32 counter = 0;
 	do
 	{
+		UE_LOG(LogTemp, Warning, TEXT("generate delaunay : %d"), counter);
 		bSuccess = DelaunayTriangulation.Triangulate(Points);
 		
 	} while (!bSuccess && !DelaunayTriangulation.IsDelaunay(Points));
@@ -78,11 +80,11 @@ void ALevelGenerator::DebugGraph(FGraphPath pGraph)
 	
 	for(FNode& Node : pGraph.Nodes)
 	{
-		DrawDebugSphere(World, FVector(Node.Position, 10), 2.f, 10.f, FColor::Cyan, true);
+		DrawDebugSphere(World, FVector(Node.Position, 20), 2.f, 10.f, FColor::Cyan, true);
 		
 		for (FGraphEdge& Edge : Node.Edges)
 		{
-			DrawDebugLine(World, FVector(Node.Position,10), FVector(Edge.TargetNodePos,10), FColor::Blue, true);
+			DrawDebugLine(World, FVector(Node.Position,20), FVector(Edge.TargetNodePos,20), FColor::Blue, true);
 		}
 	}
 }
