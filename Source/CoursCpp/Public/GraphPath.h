@@ -68,12 +68,12 @@ struct FGraphPath
 		return false;
 	}
 
-	bool IsEdgeInGraph(int32 pNode1, int32 pNode2)
-	{
-		if (!IsNodeInGraph(pNode1)) return false;
-		if (!IsNodeInGraph(pNode2)) return false;
-		return true;
-	}
+	// bool IsEdgeInGraph(int32 pNode1, int32 pNode2)
+	// {
+	// 	if (!IsNodeInGraph(pNode1)) return false;
+	// 	if (!IsNodeInGraph(pNode2)) return false;
+	// 	return true;
+	// }
 	
 	FNode GetNode(int32 pNode)
 	{
@@ -93,14 +93,8 @@ struct FGraphPath
 				int32 Node2, FVector2d posNode2, int32 Weight2)
 	{
 		FNode node = FNode(currentNode, posNode);
-		if (!IsEdgeInGraph(currentNode, Node1))
-		{
-			node.AddEdge(Node1, posNode1, Weight1);
-		}
-		if (!IsEdgeInGraph(currentNode, Node2))
-		{
-			node.AddEdge(Node2, posNode2, Weight2);
-		}
+		node.AddEdge(Node1, posNode1, Weight1);
+		node.AddEdge(Node2, posNode2, Weight2);
 		Nodes.Add(node);
 	}
 };

@@ -78,7 +78,7 @@ void ALevelGenerator::DebugGraph(FGraphPath pGraph)
 	
 	for(FNode& Node : pGraph.Nodes)
 	{
-		//DrawDebugSphere(World, FVector(Node.Position, 10), 5.f, 10.f, FColor::Cyan, true);
+		DrawDebugSphere(World, FVector(Node.Position, 10), 2.f, 10.f, FColor::Cyan, true);
 		
 		for (FGraphEdge& Edge : Node.Edges)
 		{
