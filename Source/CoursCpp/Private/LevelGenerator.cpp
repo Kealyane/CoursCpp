@@ -184,14 +184,19 @@ TArray<FVector2d> ALevelGenerator::GetAllCoordsOfEdge(FVector2d StartNodePos, FV
 
 void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 {
-	int32 CellSize = 125;
+	int32 CellSize = 128;
 	if (UWorld* World = GetWorld())
 	{
 		for (const TPair<int32, FNode>& NodePair : pGraph.Nodes)
 		{
 			const FNode CurrentNode = NodePair.Value;
-			FVector RoomPosition = FVector(CurrentNode.Position.X * CellSize, CurrentNode.Position.Y * CellSize, 0.0f); 
-			AFloor* Room = World->SpawnActor<AFloor>(RoomType, RoomPosition, FRotator::ZeroRotator);
+			if (!VisitedCells.Contains(CurrentNode.Position))
+			{
+				VisitedCells.Add(CurrentNode.Position);
+				FVector RoomPosition = FVector(CurrentNode.Position.X * CellSize, CurrentNode.Position.Y * CellSize, 0.0f); 
+				AFloor* Room = World->SpawnActor<AFloor>(RoomType, RoomPosition, FRotator::ZeroRotator);
+				AddTilesAroundNode(CurrentNode.Position, CellSize);
+			}
 			
 			for (const FGraphEdge& Edge : CurrentNode.Edges)
 			{
@@ -203,13 +208,46 @@ void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 				for (const FVector2D& Point : EdgePoints)
 				{
 					if (Point == StartPos || Point == EndPos) continue;
-					
-					FVector CorridorPosition = FVector(Point.X*CellSize, Point.Y*CellSize, 0.0f); 
-					AFloor* Corridor = World->SpawnActor<AFloor>(CorridorType, CorridorPosition, FRotator::ZeroRotator);
+					if (!VisitedCells.Contains(Point))
+					{
+						VisitedCells.Add(Point);
+						FVector CorridorPosition = FVector(Point.X*CellSize, Point.Y*CellSize, 0.0f);
+						AFloor* Corridor = World->SpawnActor<AFloor>(CorridorType, CorridorPosition, FRotator::ZeroRotator);
+
+						FVector2d Offset = FVector2d(-1, 0);
+						FVector2d PerpendicularPos = FVector2d(Point.X + Offset.X, Point.Y + Offset.Y);
+						if (!VisitedCells.Contains(PerpendicularPos))
+						{
+							VisitedCells.Add(PerpendicularPos);
+							FVector CorridorPosition2 = FVector(PerpendicularPos.X*CellSize, PerpendicularPos.Y*CellSize, 0.0f);
+							AFloor* Corridor2 = World->SpawnActor<AFloor>(CorridorType, CorridorPosition2, FRotator::ZeroRotator);
+						}
+					}
 				}
 			}
 		}
 		
+	}
+}
+
+void ALevelGenerator::AddTilesAroundNode(FVector2d NodePos, int32 CellSize)
+{
+	TArray<FVector2D> Offsets = {
+		FVector2D(-1, -1), FVector2D(0, -1), FVector2D(1, -1),
+		FVector2D(-1, 0),  FVector2D(1, 0),
+		FVector2D(-1, 1), FVector2D(0, 1), FVector2D(1, 1)
+	};
+	
+	if (UWorld* World = GetWorld())
+	{
+		for (FVector2D Offset : Offsets)
+		{
+			FVector2D NewPos = NodePos + Offset;
+			if (VisitedCells.Contains(NewPos)) continue;
+			VisitedCells.Add(NewPos);
+			FVector TilePosition = FVector(NewPos.X * CellSize, NewPos.Y * CellSize, 0.0f);
+			World->SpawnActor<AFloor>(RoomType, TilePosition, FRotator::ZeroRotator);
+		}
 	}
 }
 

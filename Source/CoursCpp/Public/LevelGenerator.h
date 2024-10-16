@@ -54,6 +54,8 @@ private:
 
 	// Graphic Representation
 
+	TSet<FVector2d> VisitedCells;
+
 	/**
 	 * Bresenham Algorithm
 	 * @param StartNodePos 
@@ -67,6 +69,13 @@ private:
 	 * @param pGraph 
 	 */
 	void GenerateLevelFromMST(FGraphPath pGraph);
+
+	/**
+	 * Create Room Actors for cells around NodePos
+	 * @param NodePos 
+	 * @param CellSize 
+	 */
+	void AddTilesAroundNode(FVector2d NodePos, int32 CellSize);
 
 	// Debug
 	
