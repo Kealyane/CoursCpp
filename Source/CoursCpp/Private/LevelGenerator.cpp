@@ -5,6 +5,7 @@
 #include "PointGenerator.h"
 #include "GraphPath.h"
 #include "CompGeom/Delaunay2.h"
+#include "Floor.h"
 
 // Sets default values
 ALevelGenerator::ALevelGenerator()
@@ -17,18 +18,21 @@ ALevelGenerator::ALevelGenerator()
 void ALevelGenerator::BeginPlay()
 {
 	Super::BeginPlay();
-	FGraphPath MyGraph = GenerateTriangles();
+	TArray<FVector2d> Points = PointGenerator::GeneratePoints(20, 0, 50);
+	FGraphPath MyGraph = GenerateTriangles(Points);
 	DebugPoints(Points);
 	DebugGraph(MyGraph);
-	FGraphPath MSTGraph = CreateGraphFromMST(MyGraph);
-	DebugMSTGraph(MSTGraph); 
+	FGraphPath MSTGraph = CreateMSTUsingPrim(MyGraph);
+	DebugMSTGraph(MSTGraph);
+	GenerateLevelFromMST(MSTGraph);
 }
 
-FGraphPath ALevelGenerator::GenerateTriangles()
+// ALGORITHM
+
+FGraphPath ALevelGenerator::GenerateTriangles(TArray<FVector2d> Points)
 {
 	UE::Geometry::FDelaunay2 DelaunayTriangulation;
 	
-	Points = PointGenerator::GeneratePoints(50, -100, 100);
 	bool bSuccess;
 
 	do
@@ -63,7 +67,7 @@ FGraphPath ALevelGenerator::GenerateTriangles()
 	return lGraph;
 }
 
-TArray<FPriorityEdge> ALevelGenerator::GenerateMST(FGraphPath pGraph)
+TArray<FPriorityEdge> ALevelGenerator::PrimAlgo(FGraphPath pGraph)
 {
 	TSet<int32> VisitedNodes;
 	TArray<FPriorityEdge> StoreMSTEdges;
@@ -106,9 +110,9 @@ TArray<FPriorityEdge> ALevelGenerator::GenerateMST(FGraphPath pGraph)
 	return StoreMSTEdges;
 }
 
-FGraphPath ALevelGenerator::CreateGraphFromMST(FGraphPath pGraph)
+FGraphPath ALevelGenerator::CreateMSTUsingPrim(FGraphPath pGraph)
 {
-	TArray<FPriorityEdge> StoredMSTEdges = GenerateMST(pGraph);
+	TArray<FPriorityEdge> StoredMSTEdges = PrimAlgo(pGraph);
 	FGraphPath MSTPath = FGraphPath();
 
 	for (const FPriorityEdge Edge : StoredMSTEdges)
@@ -139,6 +143,77 @@ FGraphPath ALevelGenerator::CreateGraphFromMST(FGraphPath pGraph)
 	
 	return MSTPath;
 }
+
+// GRAPHIC REPRESENTATION
+
+TArray<FVector2d> ALevelGenerator::GetAllCoordsOfEdge(FVector2d StartNodePos, FVector2d EndNodePos)
+{
+	TArray<FVector2d> EdgePoints;
+
+	const int DistanceX = FMath::Abs(EndNodePos.X - StartNodePos.X);
+	const int DistanceY = FMath::Abs(EndNodePos.Y - StartNodePos.Y);
+
+	const int DirectionX = (StartNodePos.X < EndNodePos.X) ? 1 : -1;
+	const int DirectionY = (StartNodePos.Y < EndNodePos.Y) ? 1 : -1;
+
+	int Err = DistanceX - DistanceY;
+
+	int CurrentX = StartNodePos.X;
+	int CurrentY = StartNodePos.Y;
+
+	while (true)
+	{
+		if (CurrentX == EndNodePos.X && CurrentY == EndNodePos.Y) break;
+		const int Err2 = 2 * Err;
+		
+		if (Err2 > -DistanceY)
+		{
+			Err -= DistanceY;
+			CurrentX += DirectionX;
+		}
+		if (Err2 < DistanceX)
+		{
+			Err += DistanceX;
+			CurrentY += DirectionY;
+		}
+		EdgePoints.Add(FVector2D(CurrentX, CurrentY));
+	} 
+	
+	return EdgePoints;
+}
+
+void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
+{
+	int32 CellSize = 125;
+	if (UWorld* World = GetWorld())
+	{
+		for (const TPair<int32, FNode>& NodePair : pGraph.Nodes)
+		{
+			const FNode CurrentNode = NodePair.Value;
+			FVector RoomPosition = FVector(CurrentNode.Position.X * CellSize, CurrentNode.Position.Y * CellSize, 0.0f); 
+			AFloor* Room = World->SpawnActor<AFloor>(RoomType, RoomPosition, FRotator::ZeroRotator);
+			
+			for (const FGraphEdge& Edge : CurrentNode.Edges)
+			{
+				FVector2D StartPos = CurrentNode.Position;
+				FVector2D EndPos = Edge.TargetNodePos;
+				
+				TArray<FVector2D> EdgePoints = GetAllCoordsOfEdge(StartPos, EndPos);
+				
+				for (const FVector2D& Point : EdgePoints)
+				{
+					if (Point == StartPos || Point == EndPos) continue;
+					
+					FVector CorridorPosition = FVector(Point.X*CellSize, Point.Y*CellSize, 0.0f); 
+					AFloor* Corridor = World->SpawnActor<AFloor>(CorridorType, CorridorPosition, FRotator::ZeroRotator);
+				}
+			}
+		}
+		
+	}
+}
+
+// DEBUG
 
 void ALevelGenerator::DebugPoints(TArray<FVector2d> pPoints)
 {

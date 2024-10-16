@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "LevelGenerator.generated.h"
 
+class AFloor;
 struct FPriorityEdge;
 struct FGraphPath;
 
@@ -23,11 +24,51 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	TArray<FVector2d> Points;
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AFloor> RoomType;
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AFloor> CorridorType;
 
-	FGraphPath GenerateTriangles();
-	TArray<FPriorityEdge> GenerateMST(FGraphPath pGraph);
-	FGraphPath CreateGraphFromMST(FGraphPath pGraph);
+	// Algorithm
+	
+	/**
+	 * use delaunay to generate triangles from points
+	 * @param Points 
+	 * @return a graph
+	 */
+	FGraphPath GenerateTriangles(TArray<FVector2d> Points);
+	
+	/**
+	 * Prim's Algorithm
+	 * @param pGraph the delaunay graph
+	 * @return List of shorter edges 
+	 */
+	TArray<FPriorityEdge> PrimAlgo(FGraphPath pGraph);
+
+	/**
+	 * Minimum Spanning Tree
+	 * @param pGraph the delaunay graph
+	 * @return MST graph
+	 */
+	FGraphPath CreateMSTUsingPrim(FGraphPath pGraph);
+
+	// Graphic Representation
+
+	/**
+	 * Bresenham Algorithm
+	 * @param StartNodePos 
+	 * @param EndNodePos 
+	 * @return 
+	 */
+	TArray<FVector2d> GetAllCoordsOfEdge(FVector2d StartNodePos, FVector2d EndNodePos);
+	
+	/**
+	 * Create Actors for floor following MST graph
+	 * @param pGraph 
+	 */
+	void GenerateLevelFromMST(FGraphPath pGraph);
+
+	// Debug
 	
 	void DebugPoints(TArray<FVector2d> pPoints);
 	void DebugGraph(FGraphPath pGraph);
