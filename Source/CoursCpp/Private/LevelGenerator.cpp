@@ -18,7 +18,7 @@ ALevelGenerator::ALevelGenerator()
 void ALevelGenerator::BeginPlay()
 {
 	Super::BeginPlay();
-	TArray<FVector2d> Points = PointGenerator::GeneratePoints(20, 0, 50);
+	TArray<FVector2d> Points = PointGenerator::GeneratePoints(20, 0, 100);
 	FGraphPath MyGraph = GenerateTriangles(Points);
 	DebugPoints(Points);
 	DebugGraph(MyGraph);
@@ -161,22 +161,42 @@ TArray<FVector2d> ALevelGenerator::GetAllCoordsOfEdge(FVector2d StartNodePos, FV
 	int CurrentX = StartNodePos.X;
 	int CurrentY = StartNodePos.Y;
 
+	bool bHasMovedOnX = false;
+	bool bHasMovedOnY = false;
+
 	while (true)
 	{
 		if (CurrentX == EndNodePos.X && CurrentY == EndNodePos.Y) break;
 		const int Err2 = 2 * Err;
+
+		FVector2d LastPoint = FVector2d(CurrentX, CurrentY);
 		
 		if (Err2 > -DistanceY)
 		{
 			Err -= DistanceY;
 			CurrentX += DirectionX;
+			bHasMovedOnX = true;
 		}
 		if (Err2 < DistanceX)
 		{
 			Err += DistanceX;
 			CurrentY += DirectionY;
+			bHasMovedOnY = true;
 		}
 		EdgePoints.Add(FVector2D(CurrentX, CurrentY));
+
+		// diagonal mouvement
+		if (bHasMovedOnX && bHasMovedOnY)
+		{
+			if (FMath::RandBool())
+			{
+				EdgePoints.Add(FVector2D(CurrentX, LastPoint.Y));
+			}
+			else
+			{
+				EdgePoints.Add(FVector2D(LastPoint.X, CurrentY));
+			}
+		}
 	} 
 	
 	return EdgePoints;
@@ -213,15 +233,6 @@ void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 						VisitedCells.Add(Point);
 						FVector CorridorPosition = FVector(Point.X*CellSize, Point.Y*CellSize, 0.0f);
 						AFloor* Corridor = World->SpawnActor<AFloor>(CorridorType, CorridorPosition, FRotator::ZeroRotator);
-
-						FVector2d Offset = FVector2d(-1, 0);
-						FVector2d PerpendicularPos = FVector2d(Point.X + Offset.X, Point.Y + Offset.Y);
-						if (!VisitedCells.Contains(PerpendicularPos))
-						{
-							VisitedCells.Add(PerpendicularPos);
-							FVector CorridorPosition2 = FVector(PerpendicularPos.X*CellSize, PerpendicularPos.Y*CellSize, 0.0f);
-							AFloor* Corridor2 = World->SpawnActor<AFloor>(CorridorType, CorridorPosition2, FRotator::ZeroRotator);
-						}
 					}
 				}
 			}

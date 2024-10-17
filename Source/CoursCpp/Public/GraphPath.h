@@ -67,6 +67,7 @@ struct FGraphPath
 	{
 		return Nodes[pNode];
 	}
+	// Used for Prim (add node from triangle)
 	void AddNode(int32 currentNode, FVector2d posNode,
 	 			int32 Node1, FVector2d posNode1, int32 Weight1,
 	 			int32 Node2, FVector2d posNode2, int32 Weight2)
@@ -84,6 +85,7 @@ struct FGraphPath
 			Nodes.Add(currentNode,node);
 		}
 	}
+	// Used for MST
 	void AddNode(int32 StartNode, FVector2d PosStart, int32 EndNode, FVector2d PosEnd, float Weight)
 	{
 		if (Nodes.Contains(StartNode))
