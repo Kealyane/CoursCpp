@@ -6,6 +6,7 @@
 #include "GraphPath.h"
 #include "CompGeom/Delaunay2.h"
 #include "Floor.h"
+#include "Player/MyPawn.h"
 
 // Sets default values
 ALevelGenerator::ALevelGenerator()
@@ -25,6 +26,7 @@ void ALevelGenerator::BeginPlay()
 	FGraphPath MSTGraph = CreateMSTUsingPrim(MyGraph);
 	DebugMSTGraph(MSTGraph);
 	GenerateLevelFromMST(MSTGraph);
+	SpawnPlayer(MSTGraph);
 }
 
 // ALGORITHM
@@ -204,7 +206,6 @@ TArray<FVector2d> ALevelGenerator::GetAllCoordsOfEdge(FVector2d StartNodePos, FV
 
 void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 {
-	int32 CellSize = 128;
 	if (UWorld* World = GetWorld())
 	{
 		for (const TPair<int32, FNode>& NodePair : pGraph.Nodes)
@@ -213,9 +214,9 @@ void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 			if (!VisitedCells.Contains(CurrentNode.Position))
 			{
 				VisitedCells.Add(CurrentNode.Position);
-				FVector RoomPosition = FVector(CurrentNode.Position.X * CellSize, CurrentNode.Position.Y * CellSize, 0.0f); 
+				FVector RoomPosition = FVector(CurrentNode.Position.X * CELL_SIZE, CurrentNode.Position.Y * CELL_SIZE, 0.0f); 
 				AFloor* Room = World->SpawnActor<AFloor>(RoomType, RoomPosition, FRotator::ZeroRotator);
-				AddTilesAroundNode(CurrentNode.Position, CellSize);
+				AddTilesAroundNode(CurrentNode.Position, CELL_SIZE);
 			}
 			
 			for (const FGraphEdge& Edge : CurrentNode.Edges)
@@ -231,7 +232,7 @@ void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 					if (!VisitedCells.Contains(Point))
 					{
 						VisitedCells.Add(Point);
-						FVector CorridorPosition = FVector(Point.X*CellSize, Point.Y*CellSize, 0.0f);
+						FVector CorridorPosition = FVector(Point.X * CELL_SIZE, Point.Y * CELL_SIZE, 0.0f);
 						AFloor* Corridor = World->SpawnActor<AFloor>(CorridorType, CorridorPosition, FRotator::ZeroRotator);
 					}
 				}
@@ -260,6 +261,28 @@ void ALevelGenerator::AddTilesAroundNode(FVector2d NodePos, int32 CellSize)
 			World->SpawnActor<AFloor>(RoomType, TilePosition, FRotator::ZeroRotator);
 		}
 	}
+}
+
+void ALevelGenerator::SpawnPlayer(FGraphPath pGraph)
+{
+	int32 randNode = 0;
+	do
+	{
+		randNode = FMath::RandRange(0, pGraph.Nodes.Num()-1);
+	} while (!pGraph.Nodes.Contains(randNode));
+	FVector2d NodePosition = pGraph.Nodes[randNode].Position;
+	if (UWorld* World = GetWorld())
+	{
+		if (APlayerController* PlayerController = World->GetFirstPlayerController())
+		{
+			if (AMyPawn* MyPawn = CastChecked<AMyPawn>(PlayerController->GetPawn()))
+			{
+				MyPawn->SetActorLocation(FVector(NodePosition.X * CELL_SIZE, NodePosition.Y * CELL_SIZE, 100.f));
+			}
+			
+		}
+	}
+	
 }
 
 // DEBUG

@@ -29,6 +29,8 @@ private:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AFloor> CorridorType;
 
+	const int32 CELL_SIZE = 128;
+
 	// Algorithm
 	
 	/**
@@ -76,6 +78,12 @@ private:
 	 * @param CellSize 
 	 */
 	void AddTilesAroundNode(FVector2d NodePos, int32 CellSize);
+
+	/**
+	 * Spawn the player in a random node of the mst graph
+	 * @param pGraph 
+	 */
+	void SpawnPlayer(FGraphPath pGraph);
 
 	// Debug
 	
