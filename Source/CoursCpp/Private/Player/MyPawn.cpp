@@ -61,7 +61,6 @@ void AMyPawn::Move(const FInputActionValue& Value)
 
 void AMyPawn::Look(const FInputActionValue& Value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Look"));
 	const FVector2D LookVector = Value.Get<FVector2D>();
 	AddControllerPitchInput(LookVector.Y);
 	AddControllerYawInput(LookVector.X);
