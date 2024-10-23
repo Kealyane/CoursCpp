@@ -6,6 +6,11 @@
 #include "GameFramework/Actor.h"
 #include "LevelGenerator.generated.h"
 
+namespace UE::Geometry
+{
+	struct FIndex3i;
+}
+
 class AFloor;
 struct FPriorityEdge;
 struct FGraphPath;
@@ -39,6 +44,8 @@ private:
 	 * @return a graph
 	 */
 	FGraphPath GenerateTriangles(TArray<FVector2d> Points);
+	
+	FGraphPath GenerateVoronoi(TArray<FVector2d> Points);
 	
 	/**
 	 * Prim's Algorithm

@@ -21,6 +21,11 @@ struct FGraphEdge
 		: TargetNode(pTargetNode), TargetNodePos(pTargetPos), Weight(pWeight)
 	{
 	}
+
+	void DebugEdge() const
+	{
+		UE_LOG(LogTemp, Warning, TEXT("target node : %d - Weight : %f"), TargetNode, Weight);
+	}
 };
 
 USTRUCT()
@@ -46,6 +51,15 @@ struct FNode
 	{
 		Edges.Add(FGraphEdge(pTargetNode, pTargetPos, pWeight));
 	}
+
+	void DebugNode() const
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Start Node : %d - Vector(%f,%f)"), Node, Position.X,Position.Y);
+		for (FGraphEdge elt : Edges)
+		{
+			elt.DebugEdge();
+		}
+	}
 };
 
 USTRUCT()
@@ -63,6 +77,34 @@ struct FGraphPath
 	{
 		return Nodes.Contains(pNode);
 	}
+	
+	int32 IsNodeInGraph(FVector2d pPos)
+	{
+		for (auto Node : Nodes)
+		{
+			if (FVector2d::Distance(Node.Value.Position, pPos) < FLT_EPSILON)
+			{
+				return Node.Key;
+			}
+		}
+		return -1;
+	}
+
+	bool IsEdgeInGraph(int32 StartNode, int32 EndNode)
+	{
+		if (Nodes.Contains(StartNode))
+		{
+			for (const FGraphEdge& Edge : Nodes[StartNode].Edges)
+			{
+				if (Edge.TargetNode == EndNode)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
 	FNode GetNode(int32 pNode)
 	{
 		return Nodes[pNode];
@@ -97,6 +139,26 @@ struct FGraphPath
 			FNode node = FNode(StartNode, PosStart);
 			node.AddEdge(EndNode, PosEnd, Weight);
 			Nodes.Add(StartNode, node);			
+		}
+	}
+	void AddNode(FNode Node)
+	{
+		int key = IsNodeInGraph(Node.Position);
+		if (key == -1)
+		{
+			Nodes.Add(Node.Node, Node);
+		}
+		else
+		{
+			Nodes[Node.Node].Edges.Append(Node.Edges);
+		}
+	}
+
+	void DebugGraph() const
+	{
+		for (auto Element : Nodes)
+		{
+			Element.Value.DebugNode();
 		}
 	}
 };

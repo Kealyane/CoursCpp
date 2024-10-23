@@ -19,13 +19,31 @@ ALevelGenerator::ALevelGenerator()
 void ALevelGenerator::BeginPlay()
 {
 	Super::BeginPlay();
+
 	TArray<FVector2d> Points = PointGenerator::GeneratePoints(20, 0, 100);
+
 	FGraphPath MyGraph = GenerateTriangles(Points);
+	UE_LOG(LogTemp, Warning, TEXT("Delaunay :"));
+	MyGraph.DebugGraph();
 	DebugPoints(Points);
-	DebugGraph(MyGraph);
-	FGraphPath MSTGraph = CreateMSTUsingPrim(MyGraph);
+	//DebugGraph(MyGraph);
+
+	FGraphPath VoronoiGraph = GenerateVoronoi(Points);
+	DebugGraph(VoronoiGraph);
+	UE_LOG(LogTemp, Warning, TEXT("Voronoi :"));
+	VoronoiGraph.DebugGraph();
+	
+	FGraphPath MSTGraph = CreateMSTUsingPrim(VoronoiGraph);
+	UE_LOG(LogTemp, Warning, TEXT("MST :"));
+	MSTGraph.DebugGraph();
 	DebugMSTGraph(MSTGraph);
-	GenerateLevelFromMST(MSTGraph);
+	
+	//FGraphPath MSTGraph = CreateMSTUsingPrim(MyGraph);
+	//UE_LOG(LogTemp, Warning, TEXT("MST :"));
+	//MSTGraph.DebugGraph();
+	//DebugMSTGraph(MSTGraph);
+	
+	//GenerateLevelFromMST(MSTGraph);
 	SpawnPlayer(MSTGraph);
 }
 
@@ -68,6 +86,73 @@ FGraphPath ALevelGenerator::GenerateTriangles(TArray<FVector2d> Points)
 	
 	return lGraph;
 }
+
+FGraphPath ALevelGenerator::GenerateVoronoi(TArray<FVector2d> Points)
+{
+	UE::Geometry::FDelaunay2 DelaunayTriangulation;
+
+	bool bSuccess;
+
+	do
+	{
+		bSuccess = DelaunayTriangulation.Triangulate(Points);
+		
+	} while (!bSuccess && !DelaunayTriangulation.IsDelaunay(Points));
+	
+	TArray<TArray<FVector2d>> Voronoi = DelaunayTriangulation.GetVoronoiCells(Points);
+
+	// DEBUG POINTS
+	for (auto Cell : Voronoi)
+	{
+		for (auto Vect2 : Cell)
+		{
+			DrawDebugSphere(GetWorld(), FVector(Vect2, 10), 2.f, 10.f, FColor::Red, true);
+		}
+	}
+	
+	FGraphPath lGraph = FGraphPath();
+	int32 Count = 0;
+	for (int CellIndex = 0; CellIndex < Voronoi.Num(); CellIndex++)
+	{
+		TArray<FVector2d> VoronoiCell = Voronoi[CellIndex];
+		
+		for (int PointIndex = 0; PointIndex < VoronoiCell.Num(); PointIndex++)
+		{
+			FVector2d CurrentPoint = VoronoiCell[PointIndex];
+			int NextIndex = PointIndex == VoronoiCell.Num() - 1 ? 0 : PointIndex + 1;
+			FVector2d NextPoint = VoronoiCell[NextIndex];
+			
+			float Weight = FVector2d::Distance(CurrentPoint, NextPoint);
+
+			// DEBUG EDGE : check if all edge are treated
+			FVector2d MidPoint = (CurrentPoint + NextPoint) / 2;
+			FVector MidPoint3D(MidPoint.X, MidPoint.Y, 10.0f); 
+			DrawDebugSphere(GetWorld(), MidPoint3D, 1.0f, 4, FColor::Green, true);
+			//
+			
+			int CurrentNodeIndex = lGraph.IsNodeInGraph(CurrentPoint);
+			if (CurrentNodeIndex == -1)
+			{
+				CurrentNodeIndex = Count++;
+				lGraph.AddNode(FNode(CurrentNodeIndex, CurrentPoint));
+			}
+
+			int NextNodeIndex = lGraph.IsNodeInGraph(NextPoint);
+			if (NextNodeIndex == -1)
+			{
+				NextNodeIndex = Count++;
+				lGraph.AddNode(FNode(NextNodeIndex, NextPoint));
+			}
+			
+			if (!lGraph.IsEdgeInGraph(CurrentNodeIndex, NextNodeIndex))
+			{
+				lGraph.AddNode(CurrentNodeIndex, CurrentPoint, NextNodeIndex, NextPoint, Weight);
+			}
+		}
+	}
+	return lGraph;
+}
+
 
 TArray<FPriorityEdge> ALevelGenerator::PrimAlgo(FGraphPath pGraph)
 {
@@ -166,10 +251,14 @@ TArray<FVector2d> ALevelGenerator::GetAllCoordsOfEdge(FVector2d StartNodePos, FV
 	bool bHasMovedOnX = false;
 	bool bHasMovedOnY = false;
 
+	int EndPosX = EndNodePos.X;
+	int EndPosY = EndNodePos.Y;
+
 	while (true)
 	{
-		if (CurrentX == EndNodePos.X && CurrentY == EndNodePos.Y) break;
-		const int Err2 = 2 * Err;
+		
+		if (CurrentX == EndPosX && CurrentY == EndPosY) break;
+		int Err2 = 2 * Err;
 
 		FVector2d LastPoint = FVector2d(CurrentX, CurrentY);
 		
@@ -185,20 +274,20 @@ TArray<FVector2d> ALevelGenerator::GetAllCoordsOfEdge(FVector2d StartNodePos, FV
 			CurrentY += DirectionY;
 			bHasMovedOnY = true;
 		}
-		EdgePoints.Add(FVector2D(CurrentX, CurrentY));
+		EdgePoints.Add(FVector2d(CurrentX, CurrentY));
 
 		// diagonal mouvement
-		if (bHasMovedOnX && bHasMovedOnY)
-		{
-			if (FMath::RandBool())
-			{
-				EdgePoints.Add(FVector2D(CurrentX, LastPoint.Y));
-			}
-			else
-			{
-				EdgePoints.Add(FVector2D(LastPoint.X, CurrentY));
-			}
-		}
+		// if (bHasMovedOnX && bHasMovedOnY)
+		// {
+		// 	if (FMath::RandBool())
+		// 	{
+		// 		EdgePoints.Add(FVector2d(CurrentX, LastPoint.Y));
+		// 	}
+		// 	else
+		// 	{
+		// 		EdgePoints.Add(FVector2d(LastPoint.X, CurrentY));
+		// 	}
+		// }
 	} 
 	
 	return EdgePoints;
@@ -210,23 +299,25 @@ void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 	{
 		for (const TPair<int32, FNode>& NodePair : pGraph.Nodes)
 		{
-			const FNode CurrentNode = NodePair.Value;
+			FNode CurrentNode = NodePair.Value;
 			if (!VisitedCells.Contains(CurrentNode.Position))
 			{
 				VisitedCells.Add(CurrentNode.Position);
 				FVector RoomPosition = FVector(CurrentNode.Position.X * CELL_SIZE, CurrentNode.Position.Y * CELL_SIZE, 0.0f); 
 				AFloor* Room = World->SpawnActor<AFloor>(RoomType, RoomPosition, FRotator::ZeroRotator);
-				AddTilesAroundNode(CurrentNode.Position, CELL_SIZE);
+				//AddTilesAroundNode(CurrentNode.Position, CELL_SIZE);
 			}
 			
-			for (const FGraphEdge& Edge : CurrentNode.Edges)
+			//for (const FGraphEdge& Edge : CurrentNode.Edges)
+			for (int i = 0; i < CurrentNode.Edges.Num(); i++)	
 			{
-				FVector2D StartPos = CurrentNode.Position;
-				FVector2D EndPos = Edge.TargetNodePos;
+				FVector2d StartPos = CurrentNode.Position;
+				//FVector2d EndPos = Edge.TargetNodePos;
+				FVector2d EndPos = CurrentNode.Edges[i].TargetNodePos;
 				
-				TArray<FVector2D> EdgePoints = GetAllCoordsOfEdge(StartPos, EndPos);
+				TArray<FVector2d> EdgePoints = GetAllCoordsOfEdge(StartPos, EndPos);
 				
-				for (const FVector2D& Point : EdgePoints)
+				for (const FVector2d& Point : EdgePoints)
 				{
 					if (Point == StartPos || Point == EndPos) continue;
 					if (!VisitedCells.Contains(Point))
@@ -244,17 +335,17 @@ void ALevelGenerator::GenerateLevelFromMST(FGraphPath pGraph)
 
 void ALevelGenerator::AddTilesAroundNode(FVector2d NodePos, int32 CellSize)
 {
-	TArray<FVector2D> Offsets = {
-		FVector2D(-1, -1), FVector2D(0, -1), FVector2D(1, -1),
-		FVector2D(-1, 0),  FVector2D(1, 0),
-		FVector2D(-1, 1), FVector2D(0, 1), FVector2D(1, 1)
+	TArray<FVector2d> Offsets = {
+		FVector2d(-1, -1), FVector2d(0, -1), FVector2d(1, -1),
+		FVector2d(-1, 0),  FVector2d(1, 0),
+		FVector2d(-1, 1), FVector2d(0, 1), FVector2d(1, 1)
 	};
 	
 	if (UWorld* World = GetWorld())
 	{
-		for (FVector2D Offset : Offsets)
+		for (FVector2d Offset : Offsets)
 		{
-			FVector2D NewPos = NodePos + Offset;
+			FVector2d NewPos = NodePos + Offset;
 			if (VisitedCells.Contains(NewPos)) continue;
 			VisitedCells.Add(NewPos);
 			FVector TilePosition = FVector(NewPos.X * CellSize, NewPos.Y * CellSize, 0.0f);
@@ -265,24 +356,26 @@ void ALevelGenerator::AddTilesAroundNode(FVector2d NodePos, int32 CellSize)
 
 void ALevelGenerator::SpawnPlayer(FGraphPath pGraph)
 {
-	int32 randNode = 0;
-	do
-	{
-		randNode = FMath::RandRange(0, pGraph.Nodes.Num()-1);
-	} while (!pGraph.Nodes.Contains(randNode));
-	FVector2d NodePosition = pGraph.Nodes[randNode].Position;
-	if (UWorld* World = GetWorld())
-	{
-		if (APlayerController* PlayerController = World->GetFirstPlayerController())
-		{
-			if (AMyPawn* MyPawn = CastChecked<AMyPawn>(PlayerController->GetPawn()))
-			{
-				MyPawn->SetActorLocation(FVector(NodePosition.X * CELL_SIZE, NodePosition.Y * CELL_SIZE, 100.f));
-			}
-			
-		}
-	}
-	
+	// int32 randNode = 0;
+	// do
+	// {
+	// 	randNode = FMath::RandRange(0, pGraph.Nodes.Num()-1);
+	// } while (!pGraph.Nodes.Contains(randNode));
+	// FVector2d NodePosition = pGraph.Nodes[randNode].Position;
+	// if (UWorld* World = GetWorld())
+	// {
+	// 	if (APlayerController* PlayerController = World->GetFirstPlayerController())
+	// 	{
+	// 		if (AMyPawn* MyPawn = CastChecked<AMyPawn>(PlayerController->GetPawn()))
+	// 		{
+	// 			MyPawn->SetActorLocation(FVector(NodePosition.X * CELL_SIZE, NodePosition.Y * CELL_SIZE, 100.f));
+	// 		}
+	// 		
+	// 	}
+	// }
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	AMyPawn* MyPawn = CastChecked<AMyPawn>(PlayerController->GetPawn());
+	MyPawn->SetActorLocation(FVector(0, 0, 100.f));
 }
 
 // DEBUG
