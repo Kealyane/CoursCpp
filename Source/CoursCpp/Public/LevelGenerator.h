@@ -44,22 +44,27 @@ private:
 	 * @return a graph
 	 */
 	FGraphPath GenerateTriangles(TArray<FVector2d> Points);
-	
+
+	/**
+	 * use voronoi to generate cells from points
+	 * @param Points 
+	 * @return 
+	 */
 	FGraphPath GenerateVoronoi(TArray<FVector2d> Points);
 	
 	/**
 	 * Prim's Algorithm
-	 * @param pGraph the delaunay graph
+	 * @param Graph the delaunay graph
 	 * @return List of shorter edges 
 	 */
-	TArray<FPriorityEdge> PrimAlgo(FGraphPath pGraph);
+	TArray<FPriorityEdge> PrimAlgo(FGraphPath Graph);
 
 	/**
 	 * Minimum Spanning Tree
-	 * @param pGraph the delaunay graph
+	 * @param Graph the delaunay graph
 	 * @return MST graph
 	 */
-	FGraphPath CreateMSTUsingPrim(FGraphPath pGraph);
+	FGraphPath CreateMSTUsingPrim(FGraphPath Graph);
 
 	// Graphic Representation
 
@@ -71,13 +76,15 @@ private:
 	 * @param EndNodePos 
 	 * @return 
 	 */
-	TArray<FVector2d> GetAllCoordsOfEdge(FVector2d StartNodePos, FVector2d EndNodePos);
+	TArray<FVector2d> GetAllCoordsOfEdgeDelaunay(FVector2d StartNodePos, FVector2d EndNodePos);
+	TArray<FVector2d> GetAllCoordsOfEdgeVoronoi(TTuple<int32, int32> const& StartNodePos, TTuple<int32, int32> const& EndNodePos);
 	
 	/**
 	 * Create Actors for floor following MST graph
-	 * @param pGraph 
+	 * @param Graph 
 	 */
-	void GenerateLevelFromMST(FGraphPath pGraph);
+	void GenerateLevelFromMSTDelaunay(FGraphPath Graph);
+	void GenerateLevelFromMSTVoronoi(FGraphPath Graph);
 
 	/**
 	 * Create Room Actors for cells around NodePos
@@ -88,14 +95,15 @@ private:
 
 	/**
 	 * Spawn the player in a random node of the mst graph
-	 * @param pGraph 
+	 * @param Graph 
 	 */
-	void SpawnPlayer(FGraphPath pGraph);
+	void SpawnPlayer(FGraphPath Graph);
+	
+	void SpawnPlayerZero();
 
 	// Debug
 	
-	void DebugPoints(TArray<FVector2d> pPoints);
-	void DebugGraph(FGraphPath pGraph);
-	void DebugMSTGraph(FGraphPath pGraph);
+	void DebugPoints(TArray<FVector2d> Points);
+	void DebugGraph(FGraphPath Graph, FColor ColorNode, FColor ColorEdge);
 
 };
