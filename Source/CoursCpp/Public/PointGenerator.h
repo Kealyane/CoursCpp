@@ -11,6 +11,6 @@ public:
 	PointGenerator();
 	~PointGenerator();
 
-	static TArray<FVector2d> GeneratePoints(int32 NumberOfPoints, int32 MinPos, int32 MaxPos);
-	
+	static TArray<FIntPoint> GeneratePoints(int32 NumberOfPoints, int32 MinPos, int32 MaxPos);
+	static TArray<FVector2d> ConvertPointsToVector2d(TArray<FIntPoint> Points);
 };

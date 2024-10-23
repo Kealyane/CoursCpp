@@ -43,14 +43,14 @@ private:
 	 * @param Points 
 	 * @return a graph
 	 */
-	FGraphPath GenerateTriangles(TArray<FVector2d> Points);
+	FGraphPath GenerateTriangles(TArray<FIntPoint> Points);
 
 	/**
 	 * use voronoi to generate cells from points
 	 * @param Points 
 	 * @return 
 	 */
-	FGraphPath GenerateVoronoi(TArray<FVector2d> Points);
+	FGraphPath GenerateVoronoi(TArray<FIntPoint> Points);
 	
 	/**
 	 * Prim's Algorithm
@@ -68,7 +68,7 @@ private:
 
 	// Graphic Representation
 
-	TSet<FVector2d> VisitedCells;
+	TSet<FIntPoint> VisitedCells;
 
 	/**
 	 * Bresenham Algorithm
@@ -76,22 +76,20 @@ private:
 	 * @param EndNodePos 
 	 * @return 
 	 */
-	TArray<FVector2d> GetAllCoordsOfEdgeDelaunay(FVector2d StartNodePos, FVector2d EndNodePos);
-	TArray<FVector2d> GetAllCoordsOfEdgeVoronoi(TTuple<int32, int32> const& StartNodePos, TTuple<int32, int32> const& EndNodePos);
+	TArray<FIntPoint> GetAllCoordsOfEdge(FIntPoint StartNodePos, FIntPoint EndNodePos);
 	
 	/**
 	 * Create Actors for floor following MST graph
 	 * @param Graph 
 	 */
-	void GenerateLevelFromMSTDelaunay(FGraphPath Graph);
-	void GenerateLevelFromMSTVoronoi(FGraphPath Graph);
+	void GenerateLevelFromMST(FGraphPath Graph);
 
 	/**
 	 * Create Room Actors for cells around NodePos
 	 * @param NodePos 
 	 * @param CellSize 
 	 */
-	void AddTilesAroundNode(FVector2d NodePos, int32 CellSize);
+	void AddTilesAroundNode(FIntPoint NodePos, int32 CellSize);
 
 	/**
 	 * Spawn the player in a random node of the mst graph
@@ -103,7 +101,7 @@ private:
 
 	// Debug
 	
-	void DebugPoints(TArray<FVector2d> Points);
+	void DebugPoints(TArray<FIntPoint> Points);
 	void DebugGraph(FGraphPath Graph, FColor ColorNode, FColor ColorEdge);
 
 };
